@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:zoom-connector-mule-4="http://www.mulesoft.org/schema/mule/zoom-connector-mule-4" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/zoom-connector-mule-4 http://www.mulesoft.org/schema/mule/zoom-connector-mule-4/current/mule-zoom-connector-mule-4.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+
+	
+	<zoom-connector-mule-4:zoom-config name="Zoom_Connector_Mule4Connector_Zoom_Connector_Configuration" doc:name="Zoom Connector Mule4Connector Zoom Connector Configuration" doc:id="a7676d79-48b8-4929-9429-c71d0052ac8d" >
+		<zoom-connector-mule-4:oauth-connection>
+			<zoom-connector-mule-4:oauth-authorization-code consumerKey="9KdoQEumTleJZwDIlYEQgQ" consumerSecret="NZ1yCE173v37sl16jBk494DY0XCRED6c" resourceOwnerId='egsmulesoftkinnari@gmail.com'/>
+			<zoom-connector-mule-4:oauth-callback-config listenerConfig="HTTP_Listener_config" callbackPath="/oauth2callback" authorizePath='/authorize' externalCallbackUrl="http://localhost:8081/oauth2callback" />
+		</zoom-connector-mule-4:oauth-connection>
+	</zoom-connector-mule-4:zoom-config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="b440c59e-eba5-419d-9c66-f80890e9c7f4" basePath="/users/me/meetings">
+		<http:listener-connection host="localhost" port="8081" />
+	</http:listener-config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="949970ae-4607-480e-8ca9-05079f074783" persistent="false" entryTtl="5" entryTtlUnit="MINUTES" />
+	<flow name="zoompocFlow1" doc:id="0af42868-9505-412d-b27f-3b324b283a01" >
+		<http:listener doc:name="Listener" doc:id="cfe6f9ad-cd58-4c77-b61e-d28274d33e69" config-ref="HTTP_Listener_config" path="http://localhost:8081/zoomPOC"/>
+		<zoom-connector-mule-4:meetings doc:name="Meetings" doc:id="376a0384-66a6-4f70-bab8-e2ab79dc736d" config-ref="Zoom_Connector_Mule4Connector_Zoom_Connector_Configuration" userIdUriParam="egsmulesoftkinnari@gmail.com" typeQueryParam="SCHEDULED">
+			<zoom-connector-mule-4:custom-headers ><![CDATA[#[output application/java
+---
+{
+	"Key" : "Value"
+}]]]></zoom-connector-mule-4:custom-headers>
+		</zoom-connector-mule-4:meetings>
+		<ee:transform doc:name="Transform Message" doc:id="26160dce-c898-4cd7-b21b-caf1ab1442e7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<os:store doc:name="Store" doc:id="42466fcc-cedd-465f-970d-c6bc2c5ee242" key="Access_Token" objectStore="Object_store">
+			<os:value ><![CDATA[#[payload.access_token]]]></os:value>
+		</os:store>
+		<logger level="INFO" doc:name="Logger" doc:id="0d65f0a2-7a7e-421b-a333-e369ebbe13a9" message="#[payload.access_token]"/>
+		<os:retrieve doc:name="Retrieve" doc:id="821bae51-f063-4db3-96ce-c5ba87210843" key="Access_token" objectStore="Object_store">
+			<os:default-value ><![CDATA["No Access Token Yet"]]></os:default-value>
+		</os:retrieve>
+		<zoom-connector-mule-4:meeting meetingIdUriParam="#[vars.MeetingId[0]]" doc:name="Meeting" doc:id="4da75ca0-ad3a-4b69-ae01-ef921ac41635" config-ref="Zoom_Connector_Mule4Connector_Zoom_Connector_Configuration" showPreviousOccurrencesQueryParam="true"/>
+	</flow>
+</mule>
